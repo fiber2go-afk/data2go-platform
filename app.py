@@ -320,18 +320,24 @@ with st.sidebar:
         type=["json"]
     )
 
+    uploaded_data = None
+    loaded_inputs = {}
+
     if uploaded_file is not None:
         uploaded_data = json.load(uploaded_file)
+        loaded_inputs = uploaded_data.get("inputs", {})
 
         st.success("Scenario loaded successfully.")
-        st.write("Loaded Scenario:")
-        st.json(uploaded_data)
 
+    total_mw_default = int(loaded_inputs.get("total_mw", 300))
 
-
-
-    
-    total_mw = st.slider("Total AI Load (MW)", 25, 1500, 300, step=25)
+    total_mw = st.slider(
+        "Total AI Load (MW)",
+        25,
+        1500,
+        total_mw_default,
+        step=25
+    )
     node_count = st.slider("Number of Compute Nodes", 1, 50, 12)
     selected_hub = st.selectbox("Energy Hub Region", ["Waha / Permian", "Agua Dulce / South Texas", "Barnett / North Texas", "Huntsville / East Texas"])
 
