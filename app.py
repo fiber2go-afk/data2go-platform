@@ -309,8 +309,8 @@ def scenario_to_inputs(row) -> ScenarioInputs:
 # UI
 # -----------------------------
 
-st.title("Data2Go™ Net-Zero AI Infrastructure Digital Twin Platform")
-st.caption("Prototype for DCII: Distributed AI infrastructure simulation, net-zero architecture modeling, resiliency, and community benefit optimization.")
+st.title("Data2Go™ AI Infrastructure Digital Twin Platform")
+st.caption("Prototype for DCII: AI infrastructure simulation, digital twin modeling, power-water-fiber optimization, resiliency, and community benefit analysis.")
 
 with st.sidebar:
     st.header("Scenario Builder")
