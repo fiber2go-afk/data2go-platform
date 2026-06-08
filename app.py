@@ -315,6 +315,22 @@ st.caption("Prototype for DCII: AI infrastructure simulation, digital twin model
 with st.sidebar:
     st.header("Scenario Builder")
 
+    uploaded_file = st.file_uploader(
+        "Load Scenario JSON",
+        type=["json"]
+    )
+
+    if uploaded_file is not None:
+        uploaded_data = json.load(uploaded_file)
+
+        st.success("Scenario loaded successfully.")
+        st.write("Loaded Scenario:")
+        st.json(uploaded_data)
+
+
+
+
+    
     total_mw = st.slider("Total AI Load (MW)", 25, 1500, 300, step=25)
     node_count = st.slider("Number of Compute Nodes", 1, 50, 12)
     selected_hub = st.selectbox("Energy Hub Region", ["Waha / Permian", "Agua Dulce / South Texas", "Barnett / North Texas", "Huntsville / East Texas"])
