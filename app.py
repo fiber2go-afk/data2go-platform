@@ -1,3 +1,33 @@
+# -----------------------------
+# Fiber2Go Restricted Access
+# -----------------------------
+
+import streamlit as st
+
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
+
+if not st.session_state.authenticated:
+
+    st.title("Data2Go™ Restricted Access")
+
+    st.warning(
+        "This Data2Go™ prototype is provided by Fiber2Go Corporation "
+        "for demonstration and testing purposes only. "
+        "Access is restricted to authorized reviewers and partners."
+    )
+
+    username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
+
+    if st.button("Login"):
+        if username == "reviewer" and password == "Data2Go2026":
+            st.session_state.authenticated = True
+            st.rerun()
+        else:
+            st.error("Invalid username or password.")
+
+    st.stop()
 
 import math
 import json
