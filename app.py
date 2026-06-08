@@ -1,8 +1,24 @@
+import math
+import json
+
+from dataclasses import dataclass
+from typing import Dict, List
+
+import pandas as pd
+import streamlit as st
+import matplotlib.pyplot as plt
+
+
+st.set_page_config(
+    page_title="Data2Go DCII Prototype",
+    page_icon="🌐",
+    layout="wide"
+)
+
+
 # -----------------------------
 # Fiber2Go Restricted Access
 # -----------------------------
-
-import streamlit as st
 
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
@@ -28,23 +44,6 @@ if not st.session_state.authenticated:
             st.error("Invalid username or password.")
 
     st.stop()
-
-import math
-import json
-
-from dataclasses import dataclass
-from typing import Dict, List
-
-import pandas as pd
-import streamlit as st
-import matplotlib.pyplot as plt
-
-
-st.set_page_config(
-    page_title="Data2Go DCII Prototype",
-    page_icon="🌐",
-    layout="wide"
-)
 
 
 # -----------------------------
@@ -324,12 +323,50 @@ with st.sidebar:
     loaded_inputs = {}
 
     if uploaded_file is not None:
-        uploaded_data = json.load(uploaded_file)
-        loaded_inputs = uploaded_data.get("inputs", {})
+        try:
+            uploaded_data = json.load(uploaded_file)
+            loaded_inputs = uploaded_data.get("inputs", {})
+            st.success("Scenario loaded successfully.")
+        except Exception as e:
+            st.error(f"Unable to load scenario JSON: {e}")
+            uploaded_data = None
+            loaded_inputs = {}
 
-        st.success("Scenario loaded successfully.")
+    def input_value(key, default):
+        return loaded_inputs.get(key, default)
 
-    total_mw_default = int(loaded_inputs.get("total_mw", 300))
+    def int_value(key, default, low=None, high=None):
+        value = int(round(float(input_value(key, default))))
+        if low is not None:
+            value = max(low, value)
+        if high is not None:
+            value = min(high, value)
+        return value
+
+    def float_value(key, default, low=None, high=None):
+        value = float(input_value(key, default))
+        if low is not None:
+            value = max(low, value)
+        if high is not None:
+            value = min(high, value)
+        return value
+
+    def percent_value(key, default_percent):
+        raw = float(input_value(key, default_percent / 100))
+        if raw <= 1.0:
+            raw = raw * 100
+        return int(round(max(0, min(100, raw))))
+
+    def percent_float_value(key, default_percent, low=0.0, high=100.0):
+        raw = float(input_value(key, default_percent / 100))
+        if raw <= 1.0:
+            raw = raw * 100
+        return float(max(low, min(high, raw)))
+
+    total_mw_default = int_value("total_mw", 300, 25, 1500)
+    # Align uploaded values to the 25 MW slider step.
+    total_mw_default = int(round(total_mw_default / 25) * 25)
+    total_mw_default = max(25, min(1500, total_mw_default))
 
     total_mw = st.slider(
         "Total AI Load (MW)",
@@ -338,7 +375,8 @@ with st.sidebar:
         total_mw_default,
         step=25
     )
-    node_count_default = int(loaded_inputs.get("node_count", 12))
+
+    node_count_default = int_value("node_count", 12, 1, 50)
 
     node_count = st.slider(
         "Number of Compute Nodes",
@@ -346,6 +384,7 @@ with st.sidebar:
         50,
         node_count_default
     )
+
     hub_options = [
         "Waha / Permian",
         "Agua Dulce / South Texas",
@@ -358,41 +397,154 @@ with st.sidebar:
         "Waha / Permian"
     ) if uploaded_data else "Waha / Permian"
 
+    if selected_hub_default not in hub_options:
+        selected_hub_default = "Waha / Permian"
+
     selected_hub = st.selectbox(
         "Energy Hub Region",
         hub_options,
         index=hub_options.index(selected_hub_default)
     )
+
     st.subheader("Power Mix")
-    gas_share = st.slider("On-site Gas Share", 0, 100, 45) / 100
-    renewable_share = st.slider("Renewables Share", 0, 100, 40) / 100
+
+    gas_share_default = percent_value("gas_share", 45)
+    renewable_share_default = percent_value("renewable_share", 40)
+
+    # Avoid invalid defaults where gas + renewables exceed 100%.
+    if gas_share_default + renewable_share_default > 100:
+        renewable_share_default = max(0, 100 - gas_share_default)
+
+    gas_share = st.slider("On-site Gas Share", 0, 100, gas_share_default) / 100
+    renewable_share = st.slider("Renewables Share", 0, 100, renewable_share_default) / 100
     grid_share = max(0.0, 1.0 - gas_share - renewable_share)
     st.write(f"Calculated Grid Share: **{grid_share:.0%}**")
 
-    bess_hours = st.slider("BESS Duration (hours)", 0, 12, 6)
-    ccus_capture_rate = st.slider("CCUS Capture Rate", 0, 95, 80) / 100
-    transmission_loss_pct = st.slider("Avoided Transmission & Distribution Losses", 0.0, 8.0, 4.0, step=0.5) / 100
+    bess_hours = st.slider(
+        "BESS Duration (hours)",
+        0,
+        12,
+        int_value("bess_hours", 6, 0, 12)
+    )
+
+    ccus_capture_rate = st.slider(
+        "CCUS Capture Rate",
+        0,
+        95,
+        int(round(percent_float_value("ccus_capture_rate", 80, 0, 95)))
+    ) / 100
+
+    transmission_loss_pct = st.slider(
+        "Avoided Transmission & Distribution Losses",
+        0.0,
+        8.0,
+        percent_float_value("transmission_loss_pct", 4.0, 0.0, 8.0),
+        step=0.5
+    ) / 100
 
     st.subheader("Efficiency & Water")
-    pue = st.slider("PUE", 1.05, 1.80, 1.18, step=0.01)
-    wue_l_per_kwh = st.slider("WUE (liters/kWh)", 0.0, 3.0, 1.2, step=0.1)
-    freshwater_share = st.slider("Freshwater Share", 0, 100, 20) / 100
-    produced_water_share = st.slider("Produced Water Share", 0, 100, 50) / 100
+
+    pue = st.slider(
+        "PUE",
+        1.05,
+        1.80,
+        float_value("pue", 1.18, 1.05, 1.80),
+        step=0.01
+    )
+
+    wue_l_per_kwh = st.slider(
+        "WUE (liters/kWh)",
+        0.0,
+        3.0,
+        float_value("wue_l_per_kwh", 1.2, 0.0, 3.0),
+        step=0.1
+    )
+
+    freshwater_share_default = percent_value("freshwater_share", 20)
+    produced_water_share_default = percent_value("produced_water_share", 50)
+
+    if freshwater_share_default + produced_water_share_default > 100:
+        produced_water_share_default = max(0, 100 - freshwater_share_default)
+
+    freshwater_share = st.slider("Freshwater Share", 0, 100, freshwater_share_default) / 100
+    produced_water_share = st.slider("Produced Water Share", 0, 100, produced_water_share_default) / 100
     desalinated_water_share = max(0.0, 1.0 - freshwater_share - produced_water_share)
     st.write(f"Calculated Desalinated/Alternative Water Share: **{desalinated_water_share:.0%}**")
 
     st.subheader("Fiber & Community")
-    fiber_ring_miles = st.slider("Fiber Ring Miles", 0, 1000, 600, step=25)
-    communities_served = st.slider("Communities / Counties Served", 1, 50, 16)
-    broadband_population_served = st.number_input("Population Benefiting from Broadband Expansion", 0, 2000000, 250000, step=5000)
-    local_jobs_per_mw = st.slider("Local Jobs per MW", 0.0, 2.0, 0.45, step=0.05)
-    property_tax_per_mw = st.number_input("Annual Local Tax Benefit per MW ($)", 0, 500000, 70000, step=5000)
+
+    fiber_ring_miles_default = int_value("fiber_ring_miles", 600, 0, 1000)
+    fiber_ring_miles_default = int(round(fiber_ring_miles_default / 25) * 25)
+    fiber_ring_miles_default = max(0, min(1000, fiber_ring_miles_default))
+
+    fiber_ring_miles = st.slider(
+        "Fiber Ring Miles",
+        0,
+        1000,
+        fiber_ring_miles_default,
+        step=25
+    )
+
+    communities_served = st.slider(
+        "Communities / Counties Served",
+        1,
+        50,
+        int_value("communities_served", 16, 1, 50)
+    )
+
+    broadband_population_served = st.number_input(
+        "Population Benefiting from Broadband Expansion",
+        min_value=0,
+        max_value=2000000,
+        value=int_value("broadband_population_served", 250000, 0, 2000000),
+        step=5000
+    )
+
+    local_jobs_per_mw = st.slider(
+        "Local Jobs per MW",
+        0.0,
+        2.0,
+        float_value("local_jobs_per_mw", 0.45, 0.0, 2.0),
+        step=0.05
+    )
+
+    property_tax_per_mw = st.number_input(
+        "Annual Local Tax Benefit per MW ($)",
+        min_value=0,
+        max_value=500000,
+        value=int_value("property_tax_per_mw", 70000, 0, 500000),
+        step=5000
+    )
 
     st.subheader("Climate Risks")
-    hurricane_risk = st.slider("Hurricane Risk", 0, 100, 35) / 100
-    drought_risk = st.slider("Drought Risk", 0, 100, 40) / 100
-    heat_risk = st.slider("Heat Wave Risk", 0, 100, 45) / 100
-    grid_outage_risk = st.slider("Grid Outage Risk", 0, 100, 25) / 100
+
+    hurricane_risk = st.slider(
+        "Hurricane Risk",
+        0,
+        100,
+        percent_value("hurricane_risk", 35)
+    ) / 100
+
+    drought_risk = st.slider(
+        "Drought Risk",
+        0,
+        100,
+        percent_value("drought_risk", 40)
+    ) / 100
+
+    heat_risk = st.slider(
+        "Heat Wave Risk",
+        0,
+        100,
+        percent_value("heat_risk", 45)
+    ) / 100
+
+    grid_outage_risk = st.slider(
+        "Grid Outage Risk",
+        0,
+        100,
+        percent_value("grid_outage_risk", 25)
+    ) / 100
 
 
 inputs = ScenarioInputs(
@@ -542,7 +694,7 @@ with tab4:
 with tab5:
     st.subheader("DCII Demonstration Summary")
     summary = f"""
-    **Project:** Data2Go™ Net-Zero AI Infrastructure Digital Twin Platform
+    **Project:** Data2Go™ AI Infrastructure Digital Twin Platform
 
     **Purpose:** Demonstrate a software platform that enables data center developers, hyperscalers, utilities, and communities to simulate and optimize AI infrastructure architectures before construction.
 
