@@ -21,7 +21,7 @@ if not st.session_state.authenticated:
     password = st.text_input("Password", type="password")
 
     if st.button("Login"):
-        if username == "reviewer" and password == "Data2Go2026":
+        if username == st.secrets["username"] and password == st.secrets["password"]:
             st.session_state.authenticated = True
             st.rerun()
         else:
