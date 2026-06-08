@@ -1,0 +1,7 @@
+{
+  "project": "Data2Go Net-Zero AI Infrastructure Digital Twin",
+  "example_scenario": "Distributed Ring \u2014 Waha/Permian Gas Hub + CCUS",
+  "total_mw": 300,
+  "nodes": 20,
+  "purpose": "Demonstrate architecture simulation for DCII application."
+}
