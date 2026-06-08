@@ -338,9 +338,31 @@ with st.sidebar:
         total_mw_default,
         step=25
     )
-    node_count = st.slider("Number of Compute Nodes", 1, 50, 12)
-    selected_hub = st.selectbox("Energy Hub Region", ["Waha / Permian", "Agua Dulce / South Texas", "Barnett / North Texas", "Huntsville / East Texas"])
+    node_count_default = int(loaded_inputs.get("node_count", 12))
 
+    node_count = st.slider(
+        "Number of Compute Nodes",
+        1,
+        50,
+        node_count_default
+    )
+hub_options = [
+    "Waha / Permian",
+    "Agua Dulce / South Texas",
+    "Barnett / North Texas",
+    "Huntsville / East Texas"
+]
+
+selected_hub_default = uploaded_data.get(
+    "selected_hub",
+    "Waha / Permian"
+) if uploaded_data else "Waha / Permian"
+
+selected_hub = st.selectbox(
+    "Energy Hub Region",
+    hub_options,
+    index=hub_options.index(selected_hub_default)
+)
     st.subheader("Power Mix")
     gas_share = st.slider("On-site Gas Share", 0, 100, 45) / 100
     renewable_share = st.slider("Renewables Share", 0, 100, 40) / 100
